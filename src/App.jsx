@@ -150,6 +150,7 @@ export default function App() {
       }));
 
       try {
+        let hasArtifact = false;
         await generateDynamicAgentPipeline({
           userPrompt: userText,
           model: selectedModel,
@@ -179,6 +180,7 @@ export default function App() {
 
             const artStep = steps.find(s => s.type === 'artifact');
             if (artStep && artStep.code && artStep.code.trim()) {
+              hasArtifact = true;
               setIdePanel(prev => ({
                 ...prev,
                 code: artStep.code,
@@ -206,15 +208,9 @@ export default function App() {
         });
 
         // Pipeline execution finished: Open side Code Canvas Workbench ONLY IF artifact exists
-        setConversations(prev => {
-          const updatedTarget = prev.find(c => c.id === convId);
-          const lastAssistant = updatedTarget?.messages.find(m => m.id === assistantMsgId);
-          const hasArtifact = lastAssistant?.traceData?.steps?.some(s => s.type === 'artifact');
-          if (hasArtifact) {
-            setIdePanel(ide => ({ ...ide, isOpen: true }));
-          }
-          return prev;
-        });
+        if (hasArtifact) {
+          setIdePanel(ide => ({ ...ide, isOpen: true }));
+        }
       } catch (err) {
         setConversations(prev => prev.map(c => {
           if (c.id === convId) {
