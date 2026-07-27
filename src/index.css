@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-family: 'PT Sans', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .dark body {
+    background-color: #0b101d;
+    color: #f1f5f9;
+  }
+
+  h1, h2, h3, .font-lustria {
+    font-family: 'Lustria', serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Devnexes Cobalt Blue Accents */
+.accent-blue {
+  color: #0066FF;
+}
+
+.bg-accent-blue {
+  background-color: #0066FF;
+}
+
+.glow-blue {
+  box-shadow: 0 0 20px -3px rgba(0, 102, 255, 0.4);
+}
+
+/* Custom Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 102, 255, 0.6);
+}
+
+/* Micro Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes logoFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(2deg);
+  }
+}
+
+.animate-logo-float {
+  animation: logoFloat 4s ease-in-out infinite;
+}
+
+/* Step-by-Step Pipeline Reveal Animation */
+@keyframes stepReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-step-reveal {
+  opacity: 0;
+  animation: stepReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
