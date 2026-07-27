@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Copy, 
   Check, 
@@ -11,7 +11,7 @@ import {
 
 /**
  * Devnexes AI Split-Screen Code Canvas Workbench
- * Pure Light / Dark theme support with Cobalt Blue accents and NO BLACK BOXES in Light Mode!
+ * Real-time live streaming auto-scroll editor with light/dark theme support
  */
 export default function IdeCodePanel({ 
   isOpen, 
@@ -22,6 +22,14 @@ export default function IdeCodePanel({
   onOpenPreview 
 }) {
   const [copied, setCopied] = useState(false);
+  const editorRef = useRef(null);
+
+  // Auto-scroll to bottom live as LLM streams code tokens in real-time
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.scrollTop = editorRef.current.scrollHeight;
+    }
+  }, [code]);
 
   if (!isOpen) return null;
 
@@ -88,7 +96,10 @@ export default function IdeCodePanel({
       </div>
 
       {/* Main Canvas Code Editor Area */}
-      <div className="flex-1 bg-white dark:bg-[#090b10] text-slate-800 dark:text-slate-200 overflow-auto p-4 font-mono text-[12px] leading-relaxed custom-scrollbar">
+      <div 
+        ref={editorRef}
+        className="flex-1 bg-white dark:bg-[#090b10] text-slate-800 dark:text-slate-200 overflow-y-auto p-4 font-mono text-[12px] leading-relaxed custom-scrollbar scroll-smooth"
+      >
         {code ? (
           <div className="flex space-x-4 min-h-full">
             {/* Line Numbers Column */}

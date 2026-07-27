@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import MarkdownRenderer from './MarkdownRenderer';
 import { 
   Globe, 
@@ -51,6 +51,39 @@ function cleanCodeContent(code) {
     .replace(/^```[a-zA-Z]*\n?/, '')
     .replace(/```$/, '')
     .trim();
+}
+
+/**
+ * Auto-scrolling Code Box container that stays fixed in layout and scrolls live as code streams
+ */
+function StreamingCodeBox({ code }) {
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    if (boxRef.current) {
+      boxRef.current.scrollTop = boxRef.current.scrollHeight;
+    }
+  }, [code]);
+
+  return (
+    <div 
+      ref={boxRef} 
+      className="p-3.5 font-mono text-[12px] leading-relaxed overflow-y-auto max-h-64 custom-scrollbar text-slate-800 dark:text-slate-200 scroll-smooth"
+    >
+      <pre className="whitespace-pre">
+        {code.split('\n').map((line, lIdx) => (
+          <div key={lIdx} className="flex">
+            <span className="w-6 shrink-0 select-none text-slate-400 dark:text-slate-600 text-right pr-2 text-[10px]">
+              {lIdx + 1}
+            </span>
+            <span className="text-slate-700 dark:text-slate-300">
+              {line}
+            </span>
+          </div>
+        ))}
+      </pre>
+    </div>
+  );
 }
 
 export default function AgentTraceTree({ traceData, isExecuting, onOpenPreview, onOpenIdePanel }) {
@@ -305,20 +338,8 @@ export default function AgentTraceTree({ traceData, isExecuting, onOpenPreview, 
                       </div>
                     </div>
 
-                    <div className="p-3.5 font-mono text-[12px] leading-relaxed overflow-x-auto max-h-64 custom-scrollbar text-slate-800 dark:text-slate-200">
-                      <pre className="whitespace-pre">
-                        {cleanedCode.split('\n').map((line, lIdx) => (
-                          <div key={lIdx} className="flex">
-                            <span className="w-6 shrink-0 select-none text-slate-400 dark:text-slate-600 text-right pr-2 text-[10px]">
-                              {lIdx + 1}
-                            </span>
-                            <span className="text-slate-700 dark:text-slate-300 truncate">
-                              {line}
-                            </span>
-                          </div>
-                        ))}
-                      </pre>
-                    </div>
+                    {/* Auto-scrolling Code Container */}
+                    <StreamingCodeBox code={cleanedCode} />
                   </div>
                 </div>
               );
@@ -330,10 +351,10 @@ export default function AgentTraceTree({ traceData, isExecuting, onOpenPreview, 
         </div>
       )}
 
-      {/* Transparent Final Text Response Container */}
+      {/* Clean Streamed Response Content */}
       {responseStep && responseStep.content && (
-        <div style={{ animationDelay: `${pipelineSteps.length * 140}ms` }} className="pt-1 animate-step-reveal">
-          <div className="p-4 rounded-2xl bg-white/70 dark:bg-[#12151e]/70 border border-slate-200/70 dark:border-slate-800/70 backdrop-blur-xs shadow-2xs">
+        <div style={{ animationDelay: `${pipelineSteps.length * 140}ms` }} className="pt-1.5 animate-step-reveal">
+          <div className="py-1 text-sm leading-relaxed text-slate-800 dark:text-slate-200">
             <MarkdownRenderer content={responseStep.content} />
           </div>
         </div>

@@ -179,12 +179,12 @@ export default function App() {
 
             const artStep = steps.find(s => s.type === 'artifact');
             if (artStep && artStep.code && artStep.code.trim()) {
-              setIdePanel({
-                isOpen: true,
+              setIdePanel(prev => ({
+                ...prev,
                 code: artStep.code,
-                title: artStep.title,
-                language: artStep.language
-              });
+                title: artStep.title || prev.title,
+                language: artStep.language || prev.language
+              }));
             }
 
             setConversations(prev => prev.map(c => {
@@ -203,6 +203,17 @@ export default function App() {
           onError: (err) => {
             console.error(err);
           }
+        });
+
+        // Pipeline execution finished: Open side Code Canvas Workbench ONLY IF artifact exists
+        setConversations(prev => {
+          const updatedTarget = prev.find(c => c.id === convId);
+          const lastAssistant = updatedTarget?.messages.find(m => m.id === assistantMsgId);
+          const hasArtifact = lastAssistant?.traceData?.steps?.some(s => s.type === 'artifact');
+          if (hasArtifact) {
+            setIdePanel(ide => ({ ...ide, isOpen: true }));
+          }
+          return prev;
         });
       } catch (err) {
         setConversations(prev => prev.map(c => {
@@ -353,24 +364,31 @@ export default function App() {
                 <div key={msg.id} className="max-w-4xl mx-auto">
                   {msg.role === 'user' ? (
                     <div className="flex justify-end my-3">
-                      <div className="max-w-2xl px-4 py-2.5 rounded-2xl bg-slate-900 dark:bg-slate-800 text-white text-xs sm:text-sm leading-relaxed shadow-xs font-medium">
+                      <div className="max-w-xl px-4 py-2.5 rounded-2xl bg-slate-200/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 text-xs sm:text-sm leading-relaxed shadow-2xs border border-slate-300/60 dark:border-slate-700/60 font-medium">
                         {msg.content}
                       </div>
                     </div>
                   ) : (
-                    <div className="my-3">
-                      {msg.isTrace ? (
-                        <AgentTraceTree 
-                          traceData={msg.traceData} 
-                          isExecuting={isLoading && activeConv.messages[activeConv.messages.length - 1]?.id === msg.id}
-                          onOpenPreview={handleOpenPreview}
-                          onOpenIdePanel={(code, title, language) => setIdePanel({ isOpen: true, code, title, language })}
-                        />
-                      ) : (
-                        <div className="p-4 rounded-2xl bg-white dark:bg-[#12151e] border border-slate-200 dark:border-slate-800 text-sm leading-relaxed shadow-xs">
-                          <MarkdownRenderer content={msg.content} />
-                        </div>
-                      )}
+                    <div className="my-4 flex items-start space-x-3">
+                      <img 
+                        src="/devnexes-logo.png" 
+                        alt="Devnexes AI" 
+                        className="w-7 h-7 object-contain mt-1 shrink-0 animate-logo-float" 
+                      />
+                      <div className="flex-1 min-w-0">
+                        {msg.isTrace ? (
+                          <AgentTraceTree 
+                            traceData={msg.traceData} 
+                            isExecuting={isLoading && activeConv.messages[activeConv.messages.length - 1]?.id === msg.id}
+                            onOpenPreview={handleOpenPreview}
+                            onOpenIdePanel={(code, title, language) => setIdePanel({ isOpen: true, code, title, language })}
+                          />
+                        ) : (
+                          <div className="py-1 text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+                            <MarkdownRenderer content={msg.content} />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

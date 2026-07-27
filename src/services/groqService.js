@@ -1,7 +1,7 @@
 /**
  * Groq API Integration Service for Antigravity AI Platform.
- * Supports streaming completions, dynamic skill routing, intent analysis,
- * code artifact generation, and multi-turn conversation memory.
+ * Supports pure 100% real-time frame-by-frame LLM token streaming,
+ * dynamic skill routing, intent analysis, code artifact streaming, and multi-turn memory.
  */
 
 import { DETAILED_SKILLS, getMatchingSkill } from '../skills/index.js';
@@ -29,7 +29,8 @@ export function setGroqApiKey(key) {
 }
 
 /**
- * Direct low-level chat completion streaming with Groq API
+ * Direct low-level chat completion streaming with Groq API.
+ * Emits SSE token chunks frame-by-frame in real-time as emitted by the LLM model.
  */
 export async function streamGroqChat({ messages, model = DEFAULT_MODEL, apiKey, onChunk, onError }) {
   const keyToUse = apiKey || getGroqApiKey();
@@ -100,12 +101,11 @@ export async function streamGroqChat({ messages, model = DEFAULT_MODEL, apiKey, 
 }
 
 /**
- * Executes a sharp, intelligent Agent Pipeline with Multi-Turn Conversation Memory:
+ * PURE REAL-TIME LLM STREAMING PIPELINE (ZERO ARTIFICIAL DELAYS):
  * 1. Analyzes user intent & previous history via LLM Router.
- * 2. Loads dynamic skill from real skills registry.
- * 3. Builds real documentation search references.
- * 4. Generates 100% COMPLETE, FULLY IMPLEMENTED code artifact ONLY if required by intent.
- * 5. Streams sharp, concise final response.
+ * 2. Emits Intent, Skill & Research steps immediately upon completion.
+ * 3. STREAMS CODE TOKENS FRAME-BY-FRAME LIVE directly from Groq LLM SSE stream!
+ * 4. STREAMS EXPLANATION TOKENS FRAME-BY-FRAME LIVE directly from Groq LLM SSE stream!
  */
 export async function generateDynamicAgentPipeline({
   userPrompt,
@@ -173,29 +173,32 @@ export async function generateDynamicAgentPipeline({
   const skillId = analysis.skillId || 'web-research-analyst';
   const activeSkill = DETAILED_SKILLS[skillId] || DETAILED_SKILLS['web-research-analyst'];
 
-  // Step 2: Build Real Documentation References
-  const searchDomains = analysis.searchDomains || activeSkill.domains || ['github.com', 'developer.mozilla.org'];
-  const realSearchResults = searchDomains.map((domain, idx) => ({
-    title: `${activeSkill.name} Reference (${domain})`,
-    domain: domain,
-    type: idx % 2 === 0 ? 'claude' : 'globe',
-    highlight: idx === 0,
-    url: `https://${domain}`
-  }));
+  // Construct initial trace steps immediately
+  const traceSteps = [];
 
-  // Step 3: Construct Pipeline Steps
-  const traceSteps = [
-    {
-      type: 'header',
-      title: `Intent Analysis: ${analysis.reasoning}`
-    },
-    {
-      type: 'skill',
-      skillName: activeSkill.id
-    }
-  ];
+  // Intent Header Step
+  traceSteps.push({
+    type: 'header',
+    title: `Intent Analysis: ${analysis.reasoning}`
+  });
 
+  // Loaded Skill Step
+  traceSteps.push({
+    type: 'skill',
+    skillName: activeSkill.id
+  });
+
+  // Web Research Step (if needed)
   if (analysis.needsWebResearch !== false) {
+    const searchDomains = analysis.searchDomains || activeSkill.domains || ['github.com', 'developer.mozilla.org'];
+    const realSearchResults = searchDomains.map((domain, idx) => ({
+      title: `${activeSkill.name} Reference (${domain})`,
+      domain: domain,
+      type: idx % 2 === 0 ? 'claude' : 'globe',
+      highlight: idx === 0,
+      url: `https://${domain}`
+    }));
+
     traceSteps.push({
       type: 'tool_search',
       query: analysis.searchQuery || `${userPrompt} - ${activeSkill.name}`,
@@ -203,59 +206,60 @@ export async function generateDynamicAgentPipeline({
     });
   }
 
-  // Step 4: Generate 100% COMPLETE Code Artifact ONLY if required by intent analysis!
+  // Emit initial pipeline steps immediately without artificial delays
+  if (onStepUpdate) onStepUpdate([...traceSteps]);
+
+  // Stage 4: PURE REAL-TIME LLM TOKEN STREAMING FOR CODE ARTIFACT
   if (analysis.needsCodeArtifact) {
+    const artifactIndex = traceSteps.length;
+    const initialArtifact = {
+      type: 'artifact',
+      title: analysis.artifactTitle || `${userPrompt} Implementation`,
+      language: analysis.artifactLanguage || 'html',
+      code: ''
+    };
+
+    traceSteps.push(initialArtifact);
+    if (onStepUpdate) onStepUpdate([...traceSteps]);
+
     let generatedCode = '';
     try {
-      const codeRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${keyToUse}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: 'system',
-              content: `${activeSkill.systemPrompt}\nCRITICAL MANDATE: Generate 100% COMPLETE, FULLY IMPLEMENTED, SELF-CONTAINED code (${analysis.artifactLanguage || 'html'}). NEVER use placeholders, comments like '// TODO: implement rest', or incomplete function stubs. Provide every single line of code required to run for request: "${userPrompt}". Do not surround with extra markdown text.`
-            },
-            ...pastContext,
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.2
-        })
+      await streamGroqChat({
+        messages: [
+          {
+            role: 'system',
+            content: `${activeSkill.systemPrompt}\nCRITICAL MANDATE: Generate 100% COMPLETE, FULLY IMPLEMENTED, SELF-CONTAINED code (${analysis.artifactLanguage || 'html'}). NEVER use placeholders, comments like '// TODO: implement rest', or incomplete function stubs. Provide every single line of code required to run for request: "${userPrompt}". Do not surround with extra markdown text.`
+          },
+          ...pastContext,
+          { role: 'user', content: userPrompt }
+        ],
+        model,
+        apiKey: keyToUse,
+        onChunk: (delta, fullText) => {
+          generatedCode = fullText;
+          traceSteps[artifactIndex].code = fullText;
+          if (onStepUpdate) onStepUpdate([...traceSteps]);
+        }
       });
-
-      if (codeRes.ok) {
-        const codeJson = await codeRes.json();
-        generatedCode = codeJson.choices[0]?.message?.content || '';
-      }
     } catch (e) {
-      console.warn("Artifact generation error:", e);
+      console.warn("Artifact code streaming error:", e);
     }
 
     if (!generatedCode) {
       generatedCode = `<!-- Code for ${userPrompt} -->\n<div class="p-4 bg-slate-900 text-white rounded-xl">\n  <h3>${userPrompt} Component</h3>\n</div>`;
+      traceSteps[artifactIndex].code = generatedCode;
+      if (onStepUpdate) onStepUpdate([...traceSteps]);
     }
-
-    traceSteps.push({
-      type: 'artifact',
-      title: analysis.artifactTitle || `${userPrompt} Implementation`,
-      language: analysis.artifactLanguage || (generatedCode.includes('<!DOCTYPE') ? 'html' : 'python'),
-      code: generatedCode
-    });
   }
 
-  // Step 5: Add Response Step
+  // Stage 5: Final Text Explanation Token Streaming
   traceSteps.push({
     type: 'response',
     content: ''
   });
+  if (onStepUpdate) onStepUpdate([...traceSteps]);
 
-  if (onStepUpdate) onStepUpdate(traceSteps);
-
-  // Stream sharp explanation (Instruct Groq NOT to repeat code blocks if code artifact exists in trace)
+  // Stream sharp final text explanation frame-by-frame
   const taskGuidance = analysis.needsCodeArtifact
     ? "IMPORTANT: The full code implementation has already been generated in the pipeline trace artifact above. DO NOT output or repeat code blocks in your text response below. Provide ONLY a brief 2-3 bullet point explanation of the code design, how to compile/run it, and key functions."
     : `Answer the prompt "${userPrompt}" sharply and directly in key points. Avoid textbook introductions, generic history, or filler text.`;
