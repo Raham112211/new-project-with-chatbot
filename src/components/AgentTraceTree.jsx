@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import MarkdownRenderer from './MarkdownRenderer';
 import { 
   Globe, 
@@ -86,7 +86,7 @@ function StreamingCodeBox({ code }) {
   );
 }
 
-export default function AgentTraceTree({ traceData, isExecuting, onOpenPreview, onOpenIdePanel }) {
+function AgentTraceTree({ traceData, isExecuting, onOpenPreview, onOpenIdePanel }) {
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [expandedTools, setExpandedTools] = useState({});
   const [isMinimized, setIsMinimized] = useState(!isExecuting);
@@ -122,7 +122,7 @@ export default function AgentTraceTree({ traceData, isExecuting, onOpenPreview, 
   const responseStep = traceData.steps.find(s => s.type === 'response');
 
   return (
-    <div className="agent-trace-container font-sans text-slate-800 dark:text-slate-200 my-2 max-w-4xl mx-auto">
+    <div className="agent-trace-container font-sans text-slate-800 dark:text-slate-200 my-1 max-w-4xl mx-auto">
       
       {/* Transparent Pipeline Status Header Bar */}
       {pipelineSteps.length > 0 && (
@@ -143,8 +143,8 @@ export default function AgentTraceTree({ traceData, isExecuting, onOpenPreview, 
             <span className="font-semibold text-slate-800 dark:text-slate-200">
               {isExecuting ? 'Devnexes Pipeline Active...' : `Devnexes Pipeline Trace (${pipelineSteps.length} steps)`}
             </span>
-            <span className="text-[11px] text-slate-400 font-normal">
-              {isExecuting ? '• Streaming' : isMinimized ? '• Auto-closed (Click to view)' : '• Open'}
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-normal">
+              {isExecuting ? '• Streaming' : isMinimized ? '• Completed' : '• Active'}
             </span>
           </div>
 
@@ -363,3 +363,5 @@ export default function AgentTraceTree({ traceData, isExecuting, onOpenPreview, 
     </div>
   );
 }
+
+export default memo(AgentTraceTree);

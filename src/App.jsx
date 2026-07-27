@@ -360,7 +360,7 @@ export default function App() {
                 <div key={msg.id} className="max-w-4xl mx-auto">
                   {msg.role === 'user' ? (
                     <div className="flex justify-end my-3">
-                      <div className="max-w-xl px-4 py-2.5 rounded-2xl bg-slate-200/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 text-xs sm:text-sm leading-relaxed shadow-2xs border border-slate-300/60 dark:border-slate-700/60 font-medium">
+                      <div className="max-w-xl px-4 py-2.5 rounded-2xl bg-[#f0f5ff] dark:bg-[#141a29] text-slate-900 dark:text-slate-100 text-xs sm:text-sm leading-relaxed shadow-2xs border border-blue-200/80 dark:border-blue-900/60 font-medium">
                         {msg.content}
                       </div>
                     </div>
