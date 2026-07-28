@@ -2,103 +2,347 @@
 
 @layer base {
   body {
-    background-color: #f8fafc;
+    background-color: #ffffff;
     color: #0f172a;
-    font-family: 'PT Sans', system-ui, -apple-system, sans-serif;
-    font-size: 13px;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     overflow-x: hidden;
   }
 
-  .dark body {
-    background-color: #0b101d;
-    color: #f1f5f9;
-  }
-
-  h1, h2, h3, .font-lustria {
-    font-family: 'Lustria', serif;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.015em;
+    color: #0f172a;
   }
 
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
+    font-feature-settings: "liga" 0;
   }
 }
 
-/* Devnexes Cobalt Blue Accents */
-.accent-blue {
-  color: #0066FF;
-}
+/* ── Brand Color ─────────────────────────────────────────────── */
+.accent-blue { color: #0066FF; }
+.bg-accent-blue { background-color: #0066FF; }
+.glow-blue { box-shadow: 0 0 20px -3px rgba(0,102,255,0.4); }
 
-.bg-accent-blue {
-  background-color: #0066FF;
-}
-
-.glow-blue {
-  box-shadow: 0 0 20px -3px rgba(0, 102, 255, 0.4);
-}
-
-/* Custom Scrollbars */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+/* ── Custom Scrollbars ────────────────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35);
+  background: rgba(148,163,184,0.3);
   border-radius: 9999px;
 }
-
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 102, 255, 0.6);
+  background: rgba(0,102,255,0.5);
 }
 
-/* Micro Animations */
+/* ── Chat Input Hover Glow ────────────────────────────────────── */
+.chatbar-theme-hover { transition: all 0.25s cubic-bezier(0.16,1,0.3,1); }
+.chatbar-theme-hover:hover,
+.chatbar-theme-hover:focus-within {
+  border-color: #0066FF !important;
+  box-shadow:
+    0 0 0 3px rgba(0,102,255,0.08),
+    0 0 20px -4px rgba(0,102,255,0.3) !important;
+}
+
+/* ── Fade In ──────────────────────────────────────────────────── */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
 .animate-fade-in {
-  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.3s cubic-bezier(0.16,1,0.3,1) forwards;
+  backface-visibility: hidden;
 }
 
+/* ── Logo Float ───────────────────────────────────────────────── */
 @keyframes logoFloat {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-3px) rotate(2deg);
-  }
+  0%,100% { transform: translateY(0px) rotate(0deg); }
+  50%      { transform: translateY(-5px) rotate(1.5deg); }
 }
-
 .animate-logo-float {
-  animation: logoFloat 4s ease-in-out infinite;
+  animation: logoFloat 5s ease-in-out infinite;
+  will-change: transform;
 }
 
-/* Step-by-Step Pipeline Reveal Animation */
+/* ── Pipeline Step Reveal (staggered) ─────────────────────────── */
 @keyframes stepReveal {
-  0% {
-    opacity: 0;
-    transform: translateY(12px) scale(0.98);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  0%   { opacity: 0; transform: translateY(10px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 .animate-step-reveal {
   opacity: 0;
-  animation: stepReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: stepReveal 0.3s cubic-bezier(0.16,1,0.3,1) forwards;
+  backface-visibility: hidden;
 }
+
+/* ── Active node ring pulse ───────────────────────────────────── */
+@keyframes nodeRing {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  70%  { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.node-active-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: nodeRing 1.4s ease-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Connector line fill animation ───────────────────────────── */
+@keyframes lineFill {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+.connector-line-fill {
+  transform-origin: top;
+  animation: lineFill 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+
+/* ── Active step row glow ─────────────────────────────────────── */
+@keyframes rowGlow {
+  0%,100% { box-shadow: 0 0 0 0 transparent; }
+  50%      { box-shadow: 0 0 12px -2px rgba(0,102,255,0.18); }
+}
+.step-row-active {
+  animation: rowGlow 2s ease-in-out infinite;
+  border-radius: 10px;
+}
+
+/* ── Mirror Shine (hero logo) ─────────────────────────────────── */
+@keyframes mirrorShine {
+  0%   { transform: translateX(-130%) rotate(25deg); }
+  100% { transform: translateX(260%) rotate(25deg); }
+}
+.animate-mirror-shine {
+  animation: mirrorShine 7s cubic-bezier(0.4,0,0.2,1) infinite;
+}
+
+/* ── Thinking Cursor Blink ────────────────────────────────────── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* ── Pulse dot (pipeline running) ─────────────────────────────── */
+@keyframes pulseDot {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.4); opacity: 0.6; }
+}
+.animate-pulse-dot {
+  animation: pulseDot 1.2s ease-in-out infinite;
+}
+
+/* ── User message bubble entrance (Fast & Smooth Spring) ────── */
+@keyframes bubbleIn {
+  0%   { opacity: 0; transform: translateY(12px) scale(0.96); }
+  60%  { transform: translateY(-2px) scale(1.005); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-bubble-in {
+  animation: bubbleIn 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  backface-visibility: hidden;
+}
+
+/* ── Glowing Pulse Aura (Active Pipeline Nodes) ─────────────── */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 15px -2px rgba(0, 102, 255, 0.3); border-color: rgba(0, 102, 255, 0.6); }
+  50%      { box-shadow: 0 0 25px 4px rgba(0, 102, 255, 0.6); border-color: rgba(0, 102, 255, 1); }
+}
+.animate-glow-pulse {
+  animation: glowPulse 1.4s ease-in-out infinite;
+}
+
+/* ── Fast Metallic Shimmer ────────────────────────────────────── */
+@keyframes shimmerFast {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer-fast {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: shimmerFast 1.8s infinite;
+}
+
+/* ── Glowing Animated Border ─────────────────────────────────── */
+@keyframes borderGlow {
+  0%, 100% { border-color: rgba(0, 102, 255, 0.4); }
+  50%      { border-color: rgba(99, 102, 241, 0.8); }
+}
+.animate-border-glow {
+  animation: borderGlow 2s ease-in-out infinite;
+}
+
+/* ── Wave Equalizer (Streaming step indicator) ───────────────── */
+@keyframes waveBar {
+  0%, 100% { height: 6px; }
+  50%      { height: 16px; }
+}
+.animate-wave-bar {
+  animation: waveBar 0.8s ease-in-out infinite;
+}
+
+/* ── Starter card hover lift & sheen ──────────────────────────── */
+.starter-card {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.18s ease,
+              box-shadow 0.18s ease,
+              background-color 0.18s ease;
+}
+.starter-card:hover {
+  transform: translateY(-3px) scale(1.015);
+  box-shadow: 0 10px 28px -6px rgba(0, 102, 255, 0.2);
+}
+.starter-card:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* ── Code line clamp utility ──────────────────────────────────── */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Node Creation Elastic Pop-In ────────────────────────────── */
+@keyframes nodeCreate {
+  0%   { opacity: 0; transform: translateY(12px) scale(0.92); }
+  60%  { opacity: 1; transform: translateY(-2px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-node-create {
+  animation: nodeCreate 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  backface-visibility: hidden;
+}
+
+/* ── Accordion Node Open/Expand Transition ────────────────────── */
+@keyframes accordionDown {
+  0%   { opacity: 0; transform: translateY(-8px) scaleY(0.96); }
+  100% { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+.animate-accordion-down {
+  animation: accordionDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top;
+}
+
+/* ── Active Node Blinking Glow Ring ───────────────────────────── */
+@keyframes activeNodeBlink {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(0, 102, 255, 0.7), 0 0 16px 2px rgba(0, 102, 255, 0.5); 
+    transform: scale(1); 
+  }
+  50% { 
+    box-shadow: 0 0 0 8px rgba(0, 102, 255, 0), 0 0 24px 6px rgba(0, 102, 255, 0.8); 
+    transform: scale(1.08); 
+  }
+}
+.animate-active-node-blink {
+  animation: activeNodeBlink 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* ── Side Panel Slide & Fade Animation ────────────────────────── */
+@keyframes slideInRight {
+  0%   { opacity: 0; transform: translateX(36px) scale(0.98); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* ── Apple-Style Frosted Glassmorphism Bubble & Button ───────── */
+@keyframes appleGlassShine {
+  0%, 70% { transform: translateX(-150%) skewX(-20deg); }
+  100%    { transform: translateX(250%) skewX(-20deg); }
+}
+
+@keyframes mirrorGlassShimmer {
+  0%   { transform: translateX(-150%) skewX(-25deg); }
+  35%  { transform: translateX(250%) skewX(-25deg); }
+  100% { transform: translateX(250%) skewX(-25deg); }
+}
+
+.apple-glass-bubble,
+.modern-pro-bubble {
+  position: relative;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 246, 255, 0.88) 50%, rgba(255, 255, 255, 0.95) 100%);
+  color: #0f172a;
+  backdrop-filter: blur(18px) saturate(200%);
+  -webkit-backdrop-filter: blur(18px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-top-color: rgba(255, 255, 255, 1);
+  border-bottom-color: rgba(0, 102, 255, 0.25);
+  box-shadow: 
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 1),
+    inset 0 -1.5px 3px 0 rgba(0, 102, 255, 0.08),
+    0 8px 24px -4px rgba(0, 102, 255, 0.15),
+    0 2px 8px 0 rgba(15, 23, 42, 0.05);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.apple-glass-bubble::before,
+.modern-pro-bubble::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  animation: mirrorGlassShimmer 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.apple-glass-btn {
+  position: relative;
+  background: linear-gradient(135deg, rgba(0, 102, 255, 0.92) 0%, rgba(0, 80, 230, 0.96) 100%);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  box-shadow:
+    inset 0 1px 1.2px 0 rgba(255, 255, 255, 0.55),
+    0 4px 14px -2px rgba(0, 102, 255, 0.4);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.apple-glass-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: appleGlassShine 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.apple-glass-btn:hover {
+  transform: translateY(-1.5px) scale(1.02);
+  box-shadow:
+    inset 0 1px 1.8px 0 rgba(255, 255, 255, 0.7),
+    0 10px 26px -4px rgba(0, 102, 255, 0.5);
+}
+
+.apple-glass-btn:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow:
+    inset 0 1px 1px 0 rgba(0, 0, 0, 0.25),
+    0 2px 6px 0 rgba(0, 102, 255, 0.3);
+}
+

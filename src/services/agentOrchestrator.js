@@ -1,126 +1,138 @@
 /**
- * Master Agent Orchestrator powered by Groq LLM.
- * Performs real Intent Analysis, Skill Routing, Research Decisions, and Code Artifact Determination.
- * Fully preserves multi-turn conversation memory across user messages.
+ * Devnexes AI — Master Intelligence Router
+ * Fully Dynamic LLM-driven intent & persona analyzer (Powered 100% by Local Ollama Engine)
  */
 
-import { DETAILED_SKILLS, getMatchingSkill } from '../skills/index.js';
+import { DETAILED_SKILLS } from '../skills/index.js';
+import { getLLMConfig, FAST_MODEL } from './groqService.js';
 
-/**
- * Analyzes user prompt and conversation history using Groq LLM to determine exact intent and execution plan.
- */
-export async function analyzeQueryIntent({ prompt, apiKey, model, messagesHistory = [] }) {
-  const allSkillIds = Object.keys(DETAILED_SKILLS).join(' | ');
+export async function analyzeQueryIntent({ prompt, model = FAST_MODEL, messagesHistory = [] }) {
+  const allSkillIds = Object.keys(DETAILED_SKILLS).join(' | ') + ' | dynamic';
 
-  const systemRouterPrompt = `You are the Senior Master Agent Router for Devnexes AI. Analyze the user's latest prompt and previous conversation history to output a valid JSON object matching this schema ONLY (no markdown text):
+  const systemRouterPrompt = `You are the Master Intelligence Router for Devnexes AI.
+
+Analyze the user's FULL message. Determine their true intent, required expertise, and pipeline needs dynamically.
+The user may write in English, Roman Urdu, Urdu, code, or mixed languages.
+
+Output ONLY valid JSON — no extra text, no markdown wrappers:
 {
-  "intentCategory": "GREETING | CONCEPT_EXPLANATION | CODE_GENERATION | DEBUGGING",
-  "reasoning": "Detailed 1-sentence intent breakdown of what the user is asking for",
+  "intentCategory": "GREETING | CONVERSATIONAL | CONCEPT_EXPLANATION | CODE_GENERATION | DEBUGGING | RESEARCH | WRITING | CLARIFICATION_NEEDED",
+  "reasoning": "One concise sentence: what the user wants to achieve",
   "skillId": "${allSkillIds}",
-  "needsWebResearch": true | false,
-  "searchQuery": "Real search query string if research needed",
-  "searchDomains": ["github.com", "developer.mozilla.org", "docs.python.org", "en.cppreference.com", "arxiv.org", "console.groq.com"],
+  "dynamicPersona": {
+    "name": "Specific Expert Title (e.g., Quantum Computing Specialist, Rust Systems Engineer, Financial Data Analyst)",
+    "description": "Short domain expertise description",
+    "systemPrompt": "System instructions tailored specifically for handling this exact request"
+  },
+  "thinkingDepth": "none | brief | deep",
+  "needsSearch": true | false,
+  "searchQuery": "Clean search query extracted from user request, or null",
   "needsCodeArtifact": true | false,
-  "artifactLanguage": "html | cpp | python | javascript | java | css | sql",
-  "artifactTitle": "Title of code artifact if code is requested"
+  "artifactLanguage": "Extract exact programming language requested by user (e.g., 'cpp', 'python', 'html', 'javascript'). If generating a document/letter, use 'text'. If unknown, infer from context.",
+  "artifactTitle": "Create a highly specific 3-5 word title based exactly on the user's current request",
+  "complexity": "simple | moderate | complex"
 }
 
-STRICT INDEPENDENT TOPIC & ROUTING RULES:
-1. FOCUS ON LATEST PROMPT: Evaluate the user's latest prompt directly on its own merits. Do NOT drag old topics from past messages UNLESS the user explicitly refers to them using pronouns ("it", "that", "the previous code") or asks a follow-up about them.
-2. TYPOS / SINGLE CHARACTERS (e.g. "e", "a", "w", "asdf"):
-   - Set intentCategory = "GREETING", needsCodeArtifact = false.
-3. ROMAN URDU & CONVERSATIONAL (e.g. "smj ni ai", "kya", "pata nahi", "phir se batao", "what was my last msg"):
-   - Set intentCategory = "GREETING", needsCodeArtifact = false.
-4. WEBSITES & APP CREATION (e.g. "create a website for ecommerce", "build a website"):
-   - Set intentCategory = "CODE_GENERATION", needsCodeArtifact = true, artifactLanguage = "html", artifactTitle = "E-Commerce Website".
-5. CODE REQUESTS:
-   - Always set intentCategory = "CODE_GENERATION", needsCodeArtifact = true.`;
+ROUTING & THINKING RULES:
+1. GREETING: Only pure, simple greetings without any task (e.g. "hi", "hello", "assalam o alaikum").
+2. CONVERSATIONAL: Pure chat, general chit-chat, or "who are you".
+3. CONCEPT_EXPLANATION: General questions, concepts, theory, learning. Set thinkingDepth: "none" unless very complex.
+4. CODE_GENERATION: User explicitly asks to write code, implement software, or create UI. Set needsCodeArtifact: true.
+5. DEBUGGING: User provides broken code, stack traces, or error messages. Set needsCodeArtifact: true.
+6. RESEARCH: Real-time search, live data, latest facts. Set needsSearch: true, thinkingDepth: "brief".
+7. WRITING: User requests letter, email, document, essay. Set thinkingDepth: "none".
 
-  // Build context summary from history
+CRITICAL RULE FOR SIMPLE/GENERAL QUERIES:
+- If a query is simple, conceptual, conversational, or general knowledge — set thinkingDepth: "none" and complexity: "simple". Do NOT generate deep multi-step breakdown for simple questions.
+
+DYNAMIC PERSONA RULES:
+- If standard skillId fits best, select it.
+- If request requires specialized knowledge, select "skillId": "dynamic" and populate "dynamicPersona" with custom instructions tailored specifically for that domain.`;
+
   const historySummary = messagesHistory.length > 0
-    ? messagesHistory.slice(-8).map(m => {
-        if (m.role === 'user') return `User: ${m.content}`;
-        const artifactStep = m.traceData?.steps?.find(s => s.type === 'artifact');
-        if (artifactStep) return `Assistant generated ${artifactStep.language} code for "${artifactStep.title}"`;
-        const respText = m.content || m.traceData?.steps?.find(s => s.type === 'response')?.content || 'Responded to user';
-        return `Assistant: ${respText}`;
-      }).join('\n')
-    : 'No previous history';
-
-  const cleanPrompt = prompt.toLowerCase().trim();
-
-  // Handle single character typos or meaningless inputs gracefully
-  if (cleanPrompt.length <= 2 && !['c', 'r', 'go', 'py', 'ui', 'db'].includes(cleanPrompt)) {
-    return {
-      intentCategory: 'GREETING',
-      reasoning: 'Short input or typo detected; requesting clarification',
-      skillId: 'natural-language-processing',
-      needsWebResearch: false,
-      needsCodeArtifact: false
-    };
-  }
-
-  // Direct keyword override for programming languages to guarantee 100% accuracy
-  let explicitSkillOverride = null;
-  if (/\b(c\+\+|cpp|cplusplus|iostream|g\+\+|clang\+\+)\b/i.test(cleanPrompt)) {
-    explicitSkillOverride = DETAILED_SKILLS['cpp-engineering'];
-  } else if (/\b(java|spring boot|jvm|maven)\b/i.test(cleanPrompt)) {
-    explicitSkillOverride = DETAILED_SKILLS['java-engineering'];
-  } else if (/\b(python|opencv|cv2|pytorch|numpy|pandas|flask|django)\b/i.test(cleanPrompt)) {
-    explicitSkillOverride = DETAILED_SKILLS['python-engineering'];
-  } else if (/\b(html|css|react|tailwind|canvas|glassmorphism|ui|frontend|ecommerce|website)\b/i.test(cleanPrompt)) {
-    explicitSkillOverride = DETAILED_SKILLS['frontend-design'];
-  }
+    ? messagesHistory.slice(-4).map(m => {
+        if (m.role === 'user') return `User: ${m.content?.slice(0, 150)}`;
+        const art = m.traceData?.steps?.find(s => s.type === 'artifact');
+        if (art) return `AI: Generated ${art.language} — "${art.title}"`;
+        const resp = m.content || m.traceData?.steps?.find(s => s.type === 'response')?.content || '';
+        return resp ? `AI: ${resp.slice(0, 100)}` : '';
+      }).filter(Boolean).join('\n')
+    : null;
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const { endpoint, headers } = getLLMConfig(model || FAST_MODEL);
+    
+    const res = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
-        model,
+        model: model || FAST_MODEL,
         messages: [
           { role: 'system', content: systemRouterPrompt },
-          { role: 'user', content: `Conversation History:\n${historySummary}\n\nLatest User Prompt: "${prompt}"` }
+          {
+            role: 'user',
+            content: historySummary
+              ? `Prior conversation:\n${historySummary}\n\nUser's latest message:\n"${prompt}"`
+              : `User's message:\n"${prompt}"`
+          }
         ],
         temperature: 0.1,
-        response_format: { type: "json_object" }
-      })
+        response_format: { type: 'json_object' },
+        max_tokens: 450
+      }),
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      const content = data.choices[0]?.message?.content;
-      if (content) {
-        const parsed = JSON.parse(content);
-        if (explicitSkillOverride) {
-          parsed.skillId = explicitSkillOverride.id;
-          parsed.searchDomains = explicitSkillOverride.domains;
-        }
-        return parsed;
-      }
+    if (!res.ok) throw new Error(`Router HTTP ${res.status}`);
+    const json = await res.json();
+    const rawContent = json.choices?.[0]?.message?.content || '{}';
+    const parsed = JSON.parse(rawContent);
+
+    const category = parsed.intentCategory || 'CONCEPT_EXPLANATION';
+    
+    // STRICT FALLBACK: Prevent false artifact generation for chats/greetings
+    if (['GREETING', 'CONVERSATIONAL', 'CLARIFICATION_NEEDED'].includes(category)) {
+      parsed.needsCodeArtifact = false;
     }
+
+    const isWritingOrCode = category === 'WRITING' || category === 'CODE_GENERATION' || category === 'DEBUGGING' || !!parsed.needsCodeArtifact;
+
+    // Search is ONLY enabled if LLM determines search is needed AND it is NOT a creative writing/coding request
+    const wantsSearch = !!parsed.needsSearch && category === 'RESEARCH';
+
+    return {
+      intentCategory: category,
+      reasoning: parsed.reasoning || 'Processing user request dynamically',
+      skillId: parsed.skillId || 'dynamic',
+      dynamicPersona: parsed.dynamicPersona || null,
+      thinkingDepth: parsed.thinkingDepth || 'brief',
+      needsSearch: wantsSearch,
+      searchQuery: wantsSearch ? (parsed.searchQuery || prompt.slice(0, 60)) : null,
+      needsCodeArtifact: isWritingOrCode,
+      artifactLanguage: parsed.artifactLanguage || (category === 'WRITING' ? 'markdown' : 'html'),
+      artifactTitle: parsed.artifactTitle || prompt.slice(0, 40),
+      complexity: parsed.complexity || 'moderate'
+    };
+
   } catch (err) {
-    console.warn("LLM Intent Router fallback:", err);
+    console.warn('[Router] Dynamic intent router fallback:', err);
+    const hasCode = /```|#include|def |class |function |import |<html/i.test(prompt);
+
+    return {
+      intentCategory: hasCode ? 'DEBUGGING' : 'CONCEPT_EXPLANATION',
+      reasoning: `Processing query: "${prompt.slice(0, 60)}"`,
+      skillId: 'dynamic',
+      dynamicPersona: {
+        name: 'Devnexes AI Specialist',
+        description: 'Adaptive dynamic specialist',
+        systemPrompt: 'You are Devnexes AI, an expert problem solver. Provide direct, comprehensive, and helpful responses.'
+      },
+      thinkingDepth: 'brief',
+      needsSearch: false,
+      searchQuery: null,
+      needsCodeArtifact: hasCode,
+      artifactLanguage: hasCode ? 'code' : 'markdown',
+      artifactTitle: prompt.slice(0, 40),
+      complexity: 'moderate',
+    };
   }
-
-  // Heuristic Fallback
-  const isGreeting = /^(hi|hello|hey|hy|hola|kya hal ha|how are you|whats up|thanks|bye|smj ni ai|samajh nahi aaya|kya|pata nahi|kya matlab|what was my last msg|last msg|previous message)$/i.test(cleanPrompt);
-  const isCode = /build|create|write|code|script|html|cpp|c\+\+|python|java|game|calculator|dashboard|component|voice assistant|ecommerce|website|in detail|full code/i.test(cleanPrompt);
-
-  const matchedSkill = explicitSkillOverride || getMatchingSkill(prompt);
-
-  return {
-    intentCategory: isGreeting ? 'GREETING' : isCode ? 'CODE_GENERATION' : 'CONCEPT_EXPLANATION',
-    reasoning: `Categorized prompt into ${isGreeting ? 'Greeting' : isCode ? 'Code Generation' : 'Concept Explanation'} workflow for ${matchedSkill.name}`,
-    skillId: matchedSkill.id,
-    needsWebResearch: !isGreeting && !isCode,
-    searchQuery: `${prompt} ${matchedSkill.name} Documentation`,
-    searchDomains: matchedSkill.domains || ['github.com', 'developer.mozilla.org'],
-    needsCodeArtifact: isCode,
-    artifactLanguage: cleanPrompt.includes('c++') || cleanPrompt.includes('cpp') ? 'cpp' : cleanPrompt.includes('python') ? 'python' : 'html',
-    artifactTitle: `${prompt} Code`
-  };
 }

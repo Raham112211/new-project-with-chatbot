@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Play, Code, Copy, Check } from 'lucide-react';
+import { cleanCodeFence } from '../services/groqService.js';
 
 export default function ArtifactModal({ isOpen, onClose, code, title }) {
   const [activeTab, setActiveTab] = useState('preview'); // 'preview' | 'code'
@@ -7,10 +8,7 @@ export default function ArtifactModal({ isOpen, onClose, code, title }) {
 
   if (!isOpen) return null;
 
-  const cleanCode = (code || '')
-    .replace(/^```[a-zA-Z]*\n?/, '')
-    .replace(/```$/, '')
-    .trim();
+  const cleanCode = cleanCodeFence(code);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(cleanCode);
@@ -84,7 +82,7 @@ export default function ArtifactModal({ isOpen, onClose, code, title }) {
               srcDoc={cleanCode}
               title="Artifact Preview"
               className="w-full h-full border-0 bg-white"
-              sandbox="allow-scripts allow-modals"
+              sandbox="allow-scripts allow-modals allow-same-origin allow-forms allow-popups"
             />
           ) : (
             <div className="w-full h-full p-4 overflow-auto font-mono text-xs text-slate-800 dark:text-slate-200 bg-[#f8fafc] dark:bg-[#090b10] custom-scrollbar">

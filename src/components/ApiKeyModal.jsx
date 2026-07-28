@@ -1,101 +1,86 @@
 import React, { useState } from 'react';
-import { Key, X, ExternalLink, Check, Info } from 'lucide-react';
-import { getGroqApiKey, setGroqApiKey } from '../services/groqService';
+import { X, ExternalLink, Check, Info, Settings } from 'lucide-react';
+import { getTavilyApiKey, setTavilyApiKey, getOpenRouterApiKey, setOpenRouterApiKey } from '../services/groqService';
 
-export default function ApiKeyModal({ isOpen, onClose, onSave }) {
-  const [apiKey, setApiKeyInput] = useState(getGroqApiKey());
+export default function ApiKeyModal({ isOpen, onClose }) {
+  const [tavilyKey, setTavilyKeyInput] = useState(getTavilyApiKey());
+  const [openRouterKey, setOpenRouterKeyInput] = useState(getOpenRouterApiKey());
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSave = (e) => {
     e.preventDefault();
-    setGroqApiKey(apiKey);
+    setTavilyApiKey(tavilyKey);
+    setOpenRouterApiKey(openRouterKey);
     setSavedSuccess(true);
-    if (onSave) onSave(apiKey);
-    setTimeout(() => {
-      setSavedSuccess(false);
-      onClose();
-    }, 1000);
+    setTimeout(() => { setSavedSuccess(false); onClose(); }, 1000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center">
-              <Key size={16} />
-            </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in select-none">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-slate-100">
+          <div className="flex items-center space-x-2">
+            <Settings size={16} className="text-[#0066FF]" />
             <div>
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Groq API Key Setup</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Set environment variable or local key</p>
+              <h2 className="text-sm font-semibold text-slate-900">Workspace Settings</h2>
+              <p className="text-xs text-slate-500">Configure your API Keys</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-          >
+          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
             <X size={16} />
           </button>
         </div>
 
-        {/* Modal Body */}
         <form onSubmit={handleSave} className="p-5 space-y-4">
-          <div className="p-3 rounded-xl bg-orange-50/60 dark:bg-orange-950/20 border border-orange-200/70 dark:border-orange-800/40 flex items-start space-x-2.5 text-xs text-orange-800 dark:text-orange-300">
+          <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-200/70 flex items-start space-x-2.5 text-xs text-blue-800">
             <Info size={16} className="shrink-0 mt-0.5" />
             <div>
-              You can also specify your API key inside the <code className="bg-white dark:bg-slate-900 px-1 py-0.5 rounded border font-mono">.env</code> file as <code className="font-mono">VITE_GROQ_API_KEY=gsk_...</code>.
+              Keys can also be configured in <code className="bg-white px-1 py-0.5 rounded border font-mono">.env</code> as <code className="font-mono">VITE_TAVILY_API_KEY</code> and <code className="font-mono">VITE_OPENROUTER_API_KEY</code>.
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              Groq API Key
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">
+              Tavily API Key <span className="text-blue-600 font-normal">(Real-time Live Web Search)</span>
             </label>
             <input
               type="password"
-              value={apiKey}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              placeholder="gsk_..."
-              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 font-mono"
+              value={tavilyKey}
+              onChange={(e) => setTavilyKeyInput(e.target.value)}
+              placeholder="tvly-..."
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-mono"
             />
-          </div>
-
-          <div className="flex items-center justify-between text-xs pt-1">
-            <a
-              href="https://console.groq.com/keys"
-              target="_blank"
-              rel="noreferrer"
-              className="text-orange-500 hover:underline flex items-center space-x-1"
-            >
-              <span>Get Groq API Key</span>
-              <ExternalLink size={11} />
+            <a href="https://tavily.com" target="_blank" rel="noreferrer" className="mt-1 text-[11px] text-blue-600 hover:underline flex items-center space-x-1">
+              <span>Get Free Tavily Key</span>
+              <ExternalLink size={10} />
             </a>
           </div>
 
-          {/* Actions */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">
+              OpenRouter API Key <span className="text-purple-600 font-normal">(Cloud LLMs like Llama 3, DeepSeek)</span>
+            </label>
+            <input
+              type="password"
+              value={openRouterKey}
+              onChange={(e) => setOpenRouterKeyInput(e.target.value)}
+              placeholder="sk-or-v1-..."
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/50 font-mono"
+            />
+            <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="mt-1 text-[11px] text-purple-600 hover:underline flex items-center space-x-1">
+              <span>Get OpenRouter Key</span>
+              <ExternalLink size={10} />
+            </a>
+          </div>
+
           <div className="flex items-center justify-end space-x-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3.5 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-            >
+            <button type="button" onClick={onClose} className="px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
               Cancel
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-medium bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-xl shadow-sm transition-colors flex items-center space-x-1.5"
-            >
-              {savedSuccess ? (
-                <>
-                  <Check size={14} />
-                  <span>Saved!</span>
-                </>
-              ) : (
-                <span>Save Key</span>
-              )}
+            <button type="submit" className="px-4 py-2 text-xs font-medium bg-[#0066FF] hover:bg-blue-700 text-white rounded-xl shadow-xs transition-colors flex items-center space-x-1.5">
+              {savedSuccess ? <><Check size={14} /><span>Saved!</span></> : <span>Save Search Key</span>}
             </button>
           </div>
         </form>
