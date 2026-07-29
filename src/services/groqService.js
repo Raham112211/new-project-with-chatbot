@@ -11,21 +11,20 @@ import { resolveAndExecuteStep } from './executorRegistry.js';
 export const OLLAMA_BASE = 'http://localhost:11434/v1';
 export const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 
-export const DEFAULT_MODEL = 'gemma3:1b';
-export const FAST_MODEL = 'gemma3:1b';
-export const CODE_MODEL = 'qwen3.5:2b';
+export const DEFAULT_MODEL = 'openrouter/auto';
+export const FAST_MODEL = 'openrouter/auto';
+export const CODE_MODEL = 'qwen/qwen-2.5-coder-32b-instruct:free';
 
 export const AVAILABLE_MODELS = [
+  // OpenRouter Free Models
+  { id: 'openrouter/auto', name: 'OpenRouter Auto (Best Free Fallback)', provider: 'openrouter', category: 'OpenRouter Free Models' },
+  { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 Free (OpenRouter)', provider: 'openrouter', category: 'OpenRouter Free Models' },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B Free (OpenRouter)', provider: 'openrouter', category: 'OpenRouter Free Models' },
+  { id: 'google/gemini-2.5-flash:free', name: 'Gemini 2.5 Flash Free (OpenRouter)', provider: 'openrouter', category: 'OpenRouter Free Models' },
+  { id: 'qwen/qwen-2.5-coder-32b-instruct:free', name: 'Qwen 2.5 Coder 32B Free (OpenRouter)', provider: 'openrouter', category: 'OpenRouter Free Models' },
   // Local Models
-  { id: 'gemma3:1b', name: 'Gemma 3 1B (Local General)', provider: 'ollama', category: 'Local Ollama Models' },
-  { id: 'qwen3.5:2b', name: 'Qwen 3.5 2B (Local Coding)', provider: 'ollama', category: 'Local Ollama Models' },
-  // OpenRouter Models
-  { id: 'openrouter/auto', name: 'OpenRouter Auto (Best Free Fallback)', provider: 'openrouter', category: 'OpenRouter Cloud Models' },
-  { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1 (OpenRouter)', provider: 'openrouter', category: 'OpenRouter Cloud Models' },
-  { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B (OpenRouter)', provider: 'openrouter', category: 'OpenRouter Cloud Models' },
-  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash (OpenRouter)', provider: 'openrouter', category: 'OpenRouter Cloud Models' },
-  { id: 'qwen/qwen-2.5-coder-32b-instruct', name: 'Qwen 2.5 Coder 32B (OpenRouter)', provider: 'openrouter', category: 'OpenRouter Cloud Models' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (OpenRouter)', provider: 'openrouter', category: 'OpenRouter Cloud Models' }
+  { id: 'gemma3:1b', name: 'Gemma 3 1B (Local Ollama)', provider: 'ollama', category: 'Local Ollama Models' },
+  { id: 'qwen3.5:2b', name: 'Qwen 3.5 2B (Local Ollama)', provider: 'ollama', category: 'Local Ollama Models' }
 ];
 
 export function getTavilyApiKey() {
@@ -101,7 +100,7 @@ export function cleanCodeFence(code) {
 
 export async function streamGroqChat({ messages, model = DEFAULT_MODEL, onChunk, onError, maxTokens }) {
   try {
-    const { endpoint, headers } = getLLMConfig(model);
+    const { endpoint, headers, isOpenRouter } = getLLMConfig(model);
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -111,7 +110,7 @@ export async function streamGroqChat({ messages, model = DEFAULT_MODEL, onChunk,
         messages,
         temperature: 0.3,
         stream: true,
-        ...(maxTokens ? { max_tokens: maxTokens } : {})
+        max_tokens: maxTokens || (isOpenRouter ? 2048 : undefined)
       }),
     });
 
@@ -193,19 +192,11 @@ CRITICAL THINKING RULE: Do NOT write out the full code, document, or answer insi
 
 2. Output a JSON execution plan at the very end wrapped inside <plan>...</plan>.
 
-DYNAMIC NODE PLANNING RULES:
-- You are 100% responsible for defining the execution nodes.
-- For Code/Web App/Implementation requests (e.g. "create website", "write C++ code"):
-  - Create a "code" node with exact language (e.g., "html", "javascript", "python", "cpp").
-  - Set target: "canvas".
-- For Document/Letter/Writing requests:
-  - Create a "write" node with language: "markdown" or "text".
-  - Set target: "canvas".
-- For General Questions / Analysis / Synthesis:
-  - Create "analyze" or "synthesize" nodes.
-  - Set target: "chat".
-- For Live Internet Research requests:
-  - Create a "search" node followed by a "synthesize" node.
+UNIVERSAL DYNAMIC PLANNING PROTOCOL (ZERO PREDEFINED RULES):
+- You are 100% autonomous. Analyze the user's raw prompt, intent, and domain requirements intelligently.
+- Dynamically infer the exact target output format/language required for this task (e.g. "mermaid", "html", "python", "cpp", "javascript", "rust", "go", "sql", "shell", "markdown", "text", or ANY format in existence).
+- Dynamically construct 1 or more execution nodes tailored specifically for this request.
+- Every node must have a unique role ("code" | "write" | "analyze" | "search" | "synthesize"), a specific goal, a target ("canvas" | "chat"), and the exact target language.
 
 First write 2-3 sentences of reasoning, then end with ONLY:
 <plan>
@@ -218,7 +209,7 @@ First write 2-3 sentences of reasoning, then end with ONLY:
       "title": "Dynamic Descriptive Title",
       "role": "analyze | write | code | search | synthesize",
       "goal": "Clear objective of this specific node",
-      "language": "html | css | javascript | python | cpp | markdown | null",
+      "language": "Extract or infer exact target language/format required",
       "target": "canvas | chat"
     }
   ]

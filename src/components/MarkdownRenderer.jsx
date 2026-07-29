@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Copy, Check, ExternalLink } from 'lucide-react';
+import MermaidDiagram from './MermaidDiagram';
 
 function CodeBlock({ language, code }) {
   const [copied, setCopied] = useState(false);
@@ -90,8 +91,15 @@ export default function MarkdownRenderer({ content }) {
             const codeString = String(children).replace(/\n$/, '');
 
             if (!inline && match) {
+              const lang = match[1].toLowerCase();
+              if (lang === 'mermaid') {
+                return <MermaidDiagram chart={codeString} />;
+              }
               return <CodeBlock language={match[1]} code={codeString} />;
             } else if (!inline && codeString.includes('\n')) {
+              if (codeString.trim().startsWith('graph ') || codeString.trim().startsWith('sequenceDiagram') || codeString.trim().startsWith('flowchart ')) {
+                return <MermaidDiagram chart={codeString} />;
+              }
               return <CodeBlock language="text" code={codeString} />;
             }
 

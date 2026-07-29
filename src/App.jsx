@@ -7,7 +7,7 @@ import IdeCodePanel from './components/IdeCodePanel';
 import ApiKeyModal from './components/ApiKeyModal';
 import { streamGroqChat, generateDynamicAgentPipeline, generateConversationTitle, AVAILABLE_MODELS } from './services/groqService';
 import MarkdownRenderer from './components/MarkdownRenderer';
-import { Code2, PanelLeftOpen, Cpu, Layers, Globe, FileText } from 'lucide-react';
+import { Code2, Cpu } from 'lucide-react';
 
 const STORAGE_KEY_CONVS = 'devnexes_conversations_v2';
 const STORAGE_KEY_ACTIVE = 'devnexes_active_id_v2';
@@ -47,7 +47,7 @@ const getInitialModel = () => {
       return savedModel;
     }
   } catch (e) {}
-  return 'gemma3:1b';
+  return 'openrouter/auto';
 };
 
 export default function App() {
@@ -91,7 +91,7 @@ export default function App() {
 
   const userScrolledUpRef = useRef(false);
 
-  // Smooth user scroll detection (prevents scroll-fight during live node streaming)
+  // Smooth user scroll detection
   const handleChatScroll = () => {
     if (!chatContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
@@ -112,7 +112,6 @@ export default function App() {
 
     observer.observe(container, { childList: true, subtree: true, characterData: true });
     
-    // Initial scroll on mount
     if (!userScrolledUpRef.current) {
       container.scrollTop = container.scrollHeight;
     }
@@ -121,6 +120,7 @@ export default function App() {
   }, []);
 
   const activeConv = conversations.find(c => c.id === activeId) || conversations[0];
+  const hasMessages = activeConv && activeConv.messages.length > 0;
 
   const handleSelectConv = (id) => {
     userScrolledUpRef.current = false;
@@ -145,8 +145,8 @@ export default function App() {
 
   const handleSendMessage = async (userText) => {
     if (!userText.trim() || isLoading) return;
-    userScrolledUpRef.current = false; // Reset scroll lock for new message
-    setIdePanel({ isOpen: false, code: '', title: '', language: '' }); // Close canvas for new generation
+    userScrolledUpRef.current = false;
+    setIdePanel({ isOpen: false, code: '', title: '', language: '' });
     const convId = activeId;
     const userMsgId = `user-${Date.now()}`;
     const assistantMsgId = `asst-${Date.now()}`;
@@ -228,15 +228,8 @@ export default function App() {
     }
   };
 
-  const starterCards = [
-    { icon: Layers, title: 'Web App & UI', prompt: 'create a modern dark dashboard with charts and glassmorphic cards', color: 'text-blue-600', bg: 'bg-blue-50/70 border-blue-200/80 hover:border-blue-500/80' },
-    { icon: Globe, title: 'Research & Analysis', prompt: 'explain the differences between transformer and diffusion model architectures', color: 'text-indigo-600', bg: 'bg-indigo-50/70 border-indigo-200/80 hover:border-indigo-500/80' },
-    { icon: Code2, title: 'Software & Code', prompt: 'build a python class for data processing and numerical analysis', color: 'text-amber-600', bg: 'bg-amber-50/70 border-amber-200/80 hover:border-amber-500/80' },
-    { icon: FileText, title: 'Writing & Docs', prompt: 'write a technical architecture document for a microservices backend', color: 'text-purple-600', bg: 'bg-purple-50/70 border-purple-200/80 hover:border-purple-500/80' }
-  ];
-
   return (
-    <div className="flex h-screen w-screen font-sans overflow-hidden bg-[#f8fafc] text-slate-900">
+    <div className="flex h-screen w-screen font-sans overflow-hidden bg-white text-slate-900">
 
       <Sidebar
         conversations={conversations}
@@ -252,140 +245,124 @@ export default function App() {
       />
 
       <div className="flex-1 flex h-full overflow-hidden">
-        <main className="flex-1 flex flex-col h-full overflow-hidden relative border-r border-slate-200/80 bg-[#f8fafc]">
+        <main className="flex-1 flex flex-col h-full overflow-hidden relative border-r border-slate-200 bg-white">
 
-          <header className="h-12 px-4 flex items-center justify-between shrink-0 border-b border-slate-200/80 bg-white/90 backdrop-blur-md z-10">
-            <div className="flex items-center space-x-2.5 truncate">
-              {isSidebarCollapsed && (
-                <button onClick={() => setIsSidebarCollapsed(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
-                  <PanelLeftOpen size={16} />
-                </button>
-              )}
-              <div className="flex items-center space-x-2 truncate">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#0066FF] shrink-0" />
-                <span className="text-sm font-semibold truncate max-w-[200px] sm:max-w-xs text-slate-800">
-                  {activeConv?.title || 'New Chat'}
-                </span>
-              </div>
+          {/* Header */}
+          <header className="h-14 px-4 flex items-center justify-between shrink-0 border-b border-slate-200 bg-white/90 backdrop-blur-md z-10">
+            <div className="flex items-center space-x-2 truncate">
+              <span className="w-2 h-2 rounded-full bg-[#0066FF] shrink-0" />
+              <span className="text-sm font-semibold truncate max-w-[200px] sm:max-w-xs text-slate-900">
+                {activeConv?.title || 'New Chat'}
+              </span>
             </div>
 
-            <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border bg-slate-100 border-slate-200/90 text-slate-700 shadow-2xs">
-              <Cpu size={11} className="text-[#0066FF] shrink-0" />
-              <span>{AVAILABLE_MODELS.find(m => m.id === selectedModel)?.name || selectedModel}</span>
+            <div className="hidden md:flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium border bg-slate-50 border-slate-200 text-slate-700">
+              <span>Pro plan · <strong className="text-[#0066FF]">Groq Fast</strong></span>
             </div>
 
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setIdePanel(prev => ({ ...prev, isOpen: !prev.isOpen }))}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full apple-glass-btn text-white text-xs font-medium transition-all"
+                className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs font-semibold shadow-xs transition-all"
               >
-                <Code2 size={12} />
+                <Code2 size={13} />
                 <span>{idePanel.isOpen ? 'Hide Canvas' : 'Code Canvas'}</span>
               </button>
             </div>
           </header>
 
-          <div ref={chatContainerRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto custom-scrollbar">
-            {activeConv && activeConv.messages.length > 0 ? (
-              <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-                {activeConv.messages.map((msg) => (
-                  <div key={msg.id} className="animate-bubble-in">
-                    {msg.role === 'user' ? (
-                      <div className="flex justify-end">
-                        <div className={`max-w-2xl px-4.5 py-3 rounded-2xl rounded-tr-xs text-sm leading-relaxed text-slate-900 modern-pro-bubble shadow-xs whitespace-pre-wrap break-words ${
-                          /#include|function|class |def |public |import |const |let |var |struct |int main|cout|cin/i.test(msg.content)
-                            ? 'font-mono text-[12.5px] font-normal tracking-normal'
-                            : 'font-sans font-medium'
-                        }`}>
-                          {msg.content}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-start space-x-3">
-                        <div className="shrink-0 mt-0.5">
-                          <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center bg-blue-50 border border-blue-100">
-                            <img src="/devnexes-logo.png" alt="Devnexes AI" className="w-5 h-5 object-contain animate-logo-float" />
+          {/* Main Content Area */}
+          {hasMessages ? (
+            <>
+              <div ref={chatContainerRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto custom-scrollbar">
+                <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
+                  {activeConv.messages.map((msg) => (
+                    <div key={msg.id} className="animate-bubble-in">
+                      {msg.role === 'user' ? (
+                        <div className="flex justify-end">
+                          <div className={`max-w-2xl px-5 py-3.5 rounded-3xl rounded-tr-sm text-sm leading-relaxed text-slate-900 bg-[#F1F5F9] border border-slate-200 shadow-2xs whitespace-pre-wrap break-words ${
+                            /#include|function|class |def |public |import |const |let |var |struct |int main|cout|cin/i.test(msg.content)
+                              ? 'font-mono text-[12.5px] font-normal'
+                              : 'font-sans font-medium'
+                          }`}>
+                            {msg.content}
                           </div>
                         </div>
-                        <div className="flex-1 min-w-0 pt-0.5 text-slate-800">
-                          {msg.isTrace ? (
-                            <AgentTraceTree
-                              traceData={msg.traceData}
-                              isExecuting={isLoading && activeConv.messages[activeConv.messages.length - 1]?.id === msg.id}
-                              onOpenPreview={handleOpenPreview}
-                              onOpenIdePanel={(code, title, language) => setIdePanel({ isOpen: true, code, title, language })}
-                            />
-                          ) : (
-                            <div className="text-sm leading-relaxed text-slate-800">
-                              <MarkdownRenderer content={msg.content} />
+                      ) : (
+                        <div className="flex items-start space-x-3.5">
+                          <div className="shrink-0 mt-1">
+                            <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-blue-50 border border-blue-200 shadow-2xs">
+                              <img src="/devnexes-logo.png" alt="Devnexes AI" className="w-5 h-5 object-contain animate-logo-float" />
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {isLoading && activeConv.messages[activeConv.messages.length - 1]?.role === 'user' && (
-                  <div className="flex items-center space-x-3 animate-fade-in">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center bg-blue-50 border border-blue-200 animate-glow-pulse shrink-0">
-                      <img src="/devnexes-logo.png" alt="Devnexes AI" className="w-4 h-4 object-contain animate-logo-float" />
-                    </div>
-                    <div className="flex items-center space-x-1 px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-                      <span className="text-xs font-mono text-[#0066FF] mr-2 animate-pulse font-medium">Initializing pipeline...</span>
-                      {[0, 1, 2, 3].map(i => (
-                        <div key={i} className="w-1 bg-[#0066FF] rounded-full animate-wave-bar" style={{ animationDelay: `${i * 150}ms` }} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center px-4 select-none">
-                <div className="w-full max-w-xl space-y-8">
-                  <div className="text-center space-y-4">
-                    <div className="inline-flex items-center justify-center relative">
-                      <div className="p-3.5 rounded-2xl relative overflow-hidden border bg-white border-slate-200/90 shadow-md">
-                        <div className="absolute inset-0 pointer-events-none animate-mirror-shine bg-gradient-to-r from-transparent via-blue-500/10 to-transparent" />
-                        <img src="/devnexes-logo.png" alt="Devnexes AI" className="w-10 h-10 object-contain animate-logo-float relative z-10" />
-                      </div>
-                    </div>
-                    <div>
-                      <h1 className="text-2xl font-bold tracking-tight text-slate-900">What can I help you with?</h1>
-                      <p className="mt-1.5 text-sm text-slate-500">Code, research, writing — ask anything.</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {starterCards.map((card, idx) => {
-                      const CardIcon = card.icon;
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => handleSendMessage(card.prompt)}
-                          className={`starter-card group flex items-center space-x-3 p-3.5 rounded-xl border text-left bg-white border-slate-200/90 hover:bg-white ${card.bg} shadow-2xs`}
-                        >
-                          <div className="p-2 rounded-lg bg-slate-100/80 shrink-0">
-                            <CardIcon size={15} className={card.color} />
                           </div>
-                          <span className="text-xs font-semibold truncate text-slate-700 group-hover:text-slate-900 transition-colors">
-                            {card.title}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          <div className="flex-1 min-w-0 pt-0.5 text-slate-800">
+                            {msg.isTrace ? (
+                              <AgentTraceTree
+                                traceData={msg.traceData}
+                                isExecuting={isLoading && activeConv.messages[activeConv.messages.length - 1]?.id === msg.id}
+                                onOpenPreview={handleOpenPreview}
+                                onOpenIdePanel={(code, title, language) => setIdePanel({ isOpen: true, code, title, language })}
+                              />
+                            ) : (
+                              <div className="text-sm leading-relaxed text-slate-800">
+                                <MarkdownRenderer content={msg.content} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {isLoading && activeConv.messages[activeConv.messages.length - 1]?.role === 'user' && (
+                    <div className="flex items-center space-x-3.5 animate-fade-in">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-50 border border-blue-200 shrink-0 shadow-2xs">
+                        <img src="/devnexes-logo.png" alt="Devnexes AI" className="w-5 h-5 object-contain animate-logo-float" />
+                      </div>
+                      <div className="flex items-center space-x-1 px-4 py-2.5 rounded-full bg-white border border-slate-200 shadow-2xs">
+                        <span className="text-xs font-mono text-[#0066FF] mr-2.5 font-medium animate-pulse">Analyzing...</span>
+                        {[0, 1, 2, 3].map(i => (
+                          <div key={i} className="w-1 bg-[#0066FF] rounded-full animate-wave-bar" style={{ animationDelay: `${i * 150}ms` }} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
                 </div>
               </div>
-            )}
-          </div>
 
-          <ChatInput
-            onSendMessage={handleSendMessage}
-            isLoading={isLoading}
-            isDarkMode={false}
-          />
+              <div className="pb-4 pt-2">
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  isLoading={isLoading}
+                  selectedModel={selectedModel}
+                  onSelectModel={setSelectedModel}
+                />
+              </div>
+            </>
+          ) : (
+            /* Authentic Claude Home Screen: Title + Chat Input directly centered! */
+            <div className="h-full flex flex-col items-center justify-center px-4 select-none -mt-10">
+              <div className="w-full max-w-2xl space-y-6">
+                
+                {/* Centered Serif Title matching Claude AI screenshot */}
+                <div className="flex items-center justify-center space-x-3 text-3xl sm:text-4xl font-serif text-slate-900 tracking-tight text-center">
+                  <img src="/devnexes-logo.png" alt="Devnexes AI" className="w-9 h-9 object-contain animate-logo-float shrink-0" />
+                  <span className="font-serif font-normal">Devnexes AI returns!</span>
+                </div>
+
+                {/* Claude Input Box directly centered below title */}
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  isLoading={isLoading}
+                  selectedModel={selectedModel}
+                  onSelectModel={setSelectedModel}
+                />
+
+              </div>
+            </div>
+          )}
+
         </main>
 
         <IdeCodePanel

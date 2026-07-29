@@ -40,7 +40,7 @@ ROUTING & THINKING RULES:
 4. CODE_GENERATION: User explicitly asks to write code, implement software, or create UI. Set needsCodeArtifact: true.
 5. DEBUGGING: User provides broken code, stack traces, or error messages. Set needsCodeArtifact: true.
 6. RESEARCH: Real-time search, live data, latest facts. Set needsSearch: true, thinkingDepth: "brief".
-7. WRITING: User requests letter, email, document, essay. Set thinkingDepth: "none".
+7. WRITING: User requests letter, email, document, application, essay. Set thinkingDepth: "none", artifactLanguage: "markdown". NEVER output HTML for letters/documents unless user explicitly asks for HTML.
 
 CRITICAL RULE FOR SIMPLE/GENERAL QUERIES:
 - If a query is simple, conceptual, conversational, or general knowledge — set thinkingDepth: "none" and complexity: "simple". Do NOT generate deep multi-step breakdown for simple questions.
@@ -62,7 +62,8 @@ DYNAMIC PERSONA RULES:
   try {
     const { endpoint, headers } = getLLMConfig(model || FAST_MODEL);
     
-    const res = await fetch(endpoint, {
+    let json = null;
+    let res = await fetch(endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -82,15 +83,46 @@ DYNAMIC PERSONA RULES:
       }),
     });
 
+    if (!res.ok) {
+      // Retry without response_format for models that don't support JSON mode
+      res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: model || FAST_MODEL,
+          messages: [
+            { role: 'system', content: systemRouterPrompt },
+            {
+              role: 'user',
+              content: historySummary
+                ? `Prior conversation:\n${historySummary}\n\nUser's latest message:\n"${prompt}"`
+                : `User's message:\n"${prompt}"`
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 450
+        }),
+      });
+    }
+
     if (!res.ok) throw new Error(`Router HTTP ${res.status}`);
-    const json = await res.json();
+    json = await res.json();
     const rawContent = json.choices?.[0]?.message?.content || '{}';
-    const parsed = JSON.parse(rawContent);
+    const cleanJson = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleanJson);
 
     const category = parsed.intentCategory || 'CONCEPT_EXPLANATION';
-    
-    // STRICT FALLBACK: Prevent false artifact generation for chats/greetings
-    if (['GREETING', 'CONVERSATIONAL', 'CLARIFICATION_NEEDED'].includes(category)) {
+
+    // DIAGRAM & FLOWCHART FORCE ROUTER: Automatically route diagram requests to Mermaid Artifact
+    if (/diagram|flowchart|flow\s*chart|flow-chart|mindmap|mind\s*map|architecture|sequence\s*diagram|er\s*diagram|class\s*diagram/i.test(prompt)) {
+      parsed.intentCategory = 'CODE_GENERATION';
+      parsed.needsCodeArtifact = true;
+      parsed.artifactLanguage = 'mermaid';
+      if (!parsed.artifactTitle || parsed.artifactTitle === 'Untitled') {
+        parsed.artifactTitle = 'Visual Diagram';
+      }
+    } else if (['GREETING', 'CONVERSATIONAL', 'CLARIFICATION_NEEDED'].includes(category)) {
+      // STRICT FALLBACK: Prevent false artifact generation for chats/greetings
       parsed.needsCodeArtifact = false;
     }
 
